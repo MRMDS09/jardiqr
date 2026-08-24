@@ -65,4 +65,28 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Organization::class);
     }
+
+    public function canAccessApplication(): bool
+    {
+        if (! $this->is_active) {
+            return false;
+        }
+
+        if ($this->role === self::ROLE_PLATFORM_ADMIN) {
+            return true;
+        }
+
+        if (! in_array($this->role, [self::ROLE_ORG_ADMIN, self::ROLE_INVENTORY_AGENT], true)) {
+            return false;
+        }
+
+        if ($this->organization_id === null) {
+            return false;
+        }
+
+        return in_array($this->organization?->status, [
+            Organization::STATUS_TRIAL,
+            Organization::STATUS_ACTIVE,
+        ], true);
+    }
 }
