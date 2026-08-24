@@ -84,9 +84,11 @@ class User extends Authenticatable
             return false;
         }
 
-        return in_array($this->organization?->status, [
-            Organization::STATUS_TRIAL,
-            Organization::STATUS_ACTIVE,
-        ], true);
+        return $this->organization()
+            ->whereIn('status', [
+                Organization::STATUS_TRIAL,
+                Organization::STATUS_ACTIVE,
+            ])
+            ->exists();
     }
 }
