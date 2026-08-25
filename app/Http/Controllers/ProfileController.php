@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -48,9 +51,28 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        DB::transaction(function () use ($user): void {
+            if ($user->role === User::ROLE_PLATFORM_ADMIN) {
+                $activeAdminCount = User::query()
+                    ->where('role', User::ROLE_PLATFORM_ADMIN)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->where('is_active', true)
+                    ->count();
 
-        $user->delete();
+                if ($activeAdminCount <= 1) {
+                    throw ValidationException::withMessages([
+                        'password' => __('The last active platform administrator account cannot be deleted.'),
+                    ])->errorBag('userDeletion');
+                }
+            }
+
+            $user->delete();
+        });
+
+        $user->setRememberToken(null);
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

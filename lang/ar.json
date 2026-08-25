@@ -8,5 +8,6 @@
     "Dashboard": "لوحة التحكم",
     "Profile": "الملف الشخصي",
     "Save": "حفظ",
-    "Saved.": "تم الحفظ."
+    "Saved.": "تم الحفظ.",
+    "The last active platform administrator account cannot be deleted.": "لا يمكن حذف حساب مدير المنصة النشط الوحيد."
 }
