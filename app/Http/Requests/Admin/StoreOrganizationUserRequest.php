@@ -78,6 +78,14 @@ class StoreOrganizationUserRequest extends FormRequest
                     User::ROLE_INVENTORY_AGENT,
                 ]),
             ],
+            'organization_id' => ['missing'],
+            'is_active' => ['missing'],
+            'email_verified_at' => ['missing'],
+            'last_login_at' => ['missing'],
+            'remember_token' => ['missing'],
+            'id' => ['missing'],
+            'created_at' => ['missing'],
+            'updated_at' => ['missing'],
         ];
     }
 }

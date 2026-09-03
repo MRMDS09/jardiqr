@@ -78,15 +78,9 @@ class StoreOrganizationUserRequestTest extends TestCase
     {
         $actor = User::factory()->platformAdmin()->create();
         $organization = Organization::factory()->active()->create();
-        $otherOrganization = Organization::factory()->active()->create();
         $userCount = User::query()->count();
         $payload = $this->validPayload() + [
-            'organization_id' => $otherOrganization->getKey(),
-            'is_active' => false,
-            'last_login_at' => now()->toDateTimeString(),
-            'email_verified_at' => now()->toDateTimeString(),
-            'id' => 999,
-            'remember_token' => 'attacker-controlled-token',
+            'unrelated_field' => 'ignored value',
         ];
 
         $this->actingAs($actor)
@@ -103,19 +97,6 @@ class StoreOrganizationUserRequestTest extends TestCase
         $this->assertDatabaseCount('users', $userCount);
     }
 
-    public function test_route_organization_remains_authoritative_when_body_contains_another_organization_id(): void
-    {
-        [$actor, $organization] = $this->createOrganizationAdmin();
-        $otherOrganization = Organization::factory()->active()->create();
-
-        $this->actingAs($actor)
-            ->postJson($this->endpoint($organization), $this->validPayload() + [
-                'organization_id' => $otherOrganization->getKey(),
-            ])
-            ->assertOk()
-            ->assertJsonMissing(['organization_id']);
-    }
-
     public function test_phone_is_optional(): void
     {
         $actor = User::factory()->platformAdmin()->create();
@@ -126,6 +107,86 @@ class StoreOrganizationUserRequestTest extends TestCase
         $this->actingAs($actor)
             ->postJson($this->endpoint($organization), $payload)
             ->assertOk();
+    }
+
+    public function test_matching_password_and_confirmation_pass_validation_without_forbidden_fields(): void
+    {
+        $actor = User::factory()->platformAdmin()->create();
+        $organization = Organization::factory()->active()->create();
+
+        $this->actingAs($actor)
+            ->postJson($this->endpoint($organization), $this->validPayload())
+            ->assertOk();
+    }
+
+    #[DataProvider('forbiddenSystemFieldProvider')]
+    public function test_forbidden_system_fields_are_rejected_without_persisting_changes(
+        string $field,
+        mixed $value
+    ): void {
+        $actor = User::factory()->platformAdmin()->create();
+        $organization = Organization::factory()->active()->create();
+        $organizationBefore = $this->persistedOrganizationSnapshot($organization);
+        $userCount = User::query()->count();
+
+        $this->actingAs($actor)
+            ->postJson(
+                $this->endpoint($organization),
+                $this->validPayload([$field => $value])
+            )
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors($field);
+
+        $this->assertDatabaseCount('users', $userCount);
+        $this->assertDatabaseMissing('users', ['email' => 'new.user@example.test']);
+        $this->assertSame(
+            $organizationBefore,
+            $this->persistedOrganizationSnapshot($organization)
+        );
+    }
+
+    /**
+     * @return array<string, array{string, mixed}>
+     */
+    public static function forbiddenSystemFieldProvider(): array
+    {
+        return [
+            'organization id' => ['organization_id', 999],
+            'active status' => ['is_active', false],
+            'email verification timestamp' => ['email_verified_at', '2026-08-27 12:00:00'],
+            'last login timestamp' => ['last_login_at', '2026-08-27 12:00:00'],
+            'remember token' => ['remember_token', 'attacker-controlled-token'],
+            'id' => ['id', 999],
+            'created timestamp' => ['created_at', '2026-08-27 12:00:00'],
+            'updated timestamp' => ['updated_at', '2026-08-27 12:00:00'],
+        ];
+    }
+
+    public function test_route_organization_authorizes_before_payload_organization_id_is_rejected(): void
+    {
+        [$actor, $organization] = $this->createOrganizationAdmin();
+        $otherOrganization = Organization::factory()->active()->create();
+        $organizationBefore = $this->persistedOrganizationSnapshot($organization);
+        $otherOrganizationBefore = $this->persistedOrganizationSnapshot($otherOrganization);
+        $userCount = User::query()->count();
+
+        $this->actingAs($actor)
+            ->postJson($this->endpoint($organization), $this->validPayload([
+                'organization_id' => $otherOrganization->getKey(),
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('organization_id');
+
+        $this->assertDatabaseCount('users', $userCount);
+        $this->assertDatabaseMissing('users', ['email' => 'new.user@example.test']);
+        $this->assertSame(
+            $organizationBefore,
+            $this->persistedOrganizationSnapshot($organization)
+        );
+        $this->assertSame(
+            $otherOrganizationBefore,
+            $this->persistedOrganizationSnapshot($otherOrganization)
+        );
     }
 
     #[DataProvider('unauthorizedSubmissionProvider')]
@@ -335,6 +396,16 @@ class StoreOrganizationUserRequestTest extends TestCase
         $actor = User::factory()->for($organization)->organizationAdmin()->create();
 
         return [$actor, $organization];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function persistedOrganizationSnapshot(Organization $organization): array
+    {
+        return Organization::query()
+            ->findOrFail($organization->getKey())
+            ->getRawOriginal();
     }
 
     private function endpoint(Organization $organization): string
