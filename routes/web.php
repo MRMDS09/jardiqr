@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\OrganizationUserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,5 +17,20 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::middleware('auth')
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::post(
+            '/organizations/{organization}/users',
+            [OrganizationUserController::class, 'store']
+        )->name('organizations.users.store');
+
+        Route::patch(
+            '/users/{user}',
+            [OrganizationUserController::class, 'update']
+        )->name('users.update');
+    });
 
 require __DIR__.'/auth.php';
