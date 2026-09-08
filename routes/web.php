@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ChangeUserEmailController;
+use App\Http\Controllers\Admin\ChangeUserRoleController;
 use App\Http\Controllers\Admin\ChangeUserStatusController;
 use App\Http\Controllers\Admin\OrganizationUserController;
 use App\Http\Controllers\ProfileController;
@@ -43,6 +44,11 @@ Route::middleware('auth')
             '/users/{user}/status',
             [ChangeUserStatusController::class, '__invoke']
         )->name('users.status.update');
+
+        Route::patch(
+            '/users/{user}/role',
+            [ChangeUserRoleController::class, '__invoke']
+        )->name('users.role.update');
     });
 
 require __DIR__.'/auth.php';
