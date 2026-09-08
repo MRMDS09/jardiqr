@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ChangeUserEmailController;
+use App\Http\Controllers\Admin\ChangeUserStatusController;
 use App\Http\Controllers\Admin\OrganizationUserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,11 @@ Route::middleware('auth')
             '/users/{user}/email',
             [ChangeUserEmailController::class, '__invoke']
         )->name('users.email.update');
+
+        Route::patch(
+            '/users/{user}/status',
+            [ChangeUserStatusController::class, '__invoke']
+        )->name('users.status.update');
     });
 
 require __DIR__.'/auth.php';
