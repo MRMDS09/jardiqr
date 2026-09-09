@@ -18,7 +18,8 @@ class UserPolicy
 
     public function viewAny(User $actor): bool
     {
-        return $this->isPlatformAdmin($actor);
+        return $this->isPlatformAdmin($actor)
+            || $actor->role === User::ROLE_ORG_ADMIN;
     }
 
     public function view(User $actor, User $target): bool

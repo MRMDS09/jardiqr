@@ -184,11 +184,11 @@ class UserPolicyTest extends TestCase
         }
     }
 
-    public function test_organization_admin_cannot_view_any_user(): void
+    public function test_organization_admin_can_view_any_user(): void
     {
         [$actor] = $this->createOrganizationAdmin();
 
-        $this->assertTrue(Gate::forUser($actor)->denies('viewAny', User::class));
+        $this->assertTrue(Gate::forUser($actor)->allows('viewAny', User::class));
     }
 
     public function test_organization_admin_can_view_self(): void
